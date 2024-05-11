@@ -66,6 +66,13 @@ while getopts ":xnl" opt; do
     esac
 done
 
+# Check for -n without -x
+if [ "$DRY_RUN" = true ] && [ "$EXECUTE" != true ]; then
+    echo -e "${RED}Error: Option -n must be used with -x to perform a dry-run.${NC}"
+    usage
+    exit 1
+fi
+
 # If 'log' command option is specified, display the contents of the log file
 if [ "$DISPLAY_LOG" = true ]; then
     echo -e "${GREEN}Log File Contents:${NC}"
