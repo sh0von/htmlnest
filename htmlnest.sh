@@ -6,9 +6,8 @@ YELLOW='\033[0;33m'
 RED='\033[0;31m'
 NC='\033[0m'  # Reset color
 
-# Log files
+# Log file path
 LOG_FILE="htmlnest.log"
-ERROR_LOG="error.log"
 
 # Function to display usage instructions
 usage() {
@@ -23,12 +22,23 @@ usage() {
     echo -e "         View a record of file movements stored in the log file."
 }
 
-# Function to log messages with timestamps
-log_message() {
-    local log_file="$1"
-    local message="$2"
+# Function to log file movements
+log_file_movement() {
+    local src_file="$1"
+    local dest_file="$2"
     local log_timestamp=$(date '+%Y-%m-%d %H:%M:%S')
-    echo "${log_timestamp} - ${message}" >> "$log_file"
+    local commit_hash=$(generate_commit_hash)  # Generate random commit hash
+    echo "${log_timestamp} [${commit_hash}] - Moved '${src_file}' to '${dest_file}'" >> "$LOG_FILE"
+}
+
+# Function to generate a random 8-letter commit hash
+generate_commit_hash() {
+    local alphabet="abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+    local commit_hash=""
+    for i in {1..8}; do
+        commit_hash+=${alphabet:$((RANDOM % ${#alphabet})):1}
+    done
+    echo "$commit_hash"
 }
 
 # Parse command-line options
@@ -125,13 +135,9 @@ move_files() {
                     echo -e "${YELLOW}$(basename "$file") => ${dest_dir}$(basename "$file")${NC}"
                 else
                     mkdir -p "$dest_dir"  # Create destination directory if it doesn't exist
-                    if [ ! -d "$dest_dir" ]; then
-                        log_message "$ERROR_LOG" "Error: Destination directory '$dest_dir' not found."
-                        continue
-                    fi
-                    mv -v "$file" "$dest_dir" || log_message "$ERROR_LOG" "Error: Failed to move ${ext} file '$file'."
+                    mv -v "$file" "$dest_dir" || echo -e "${RED}Error: Failed to move ${ext} file '$file'.${NC}"
                     # Log file movement details
-                    log_message "$LOG_FILE" "Moved '${file}' to '${dest_dir}$(basename "$file")'"
+                    log_file_movement "$file" "${dest_dir}$(basename "$file")"
                 fi
             done < <(find . -maxdepth 1 -type f -name "*.$ext")
         fi
@@ -151,11 +157,6 @@ if [ "$EXECUTE" = true ]; then
         echo -e "${GREEN}Committing changes.${NC}"
         move_files false
         echo -e "${GREEN}Project files organized successfully.${NC}"
-
-        # Display summary of file movements
-        echo -e "${GREEN}Summary:${NC}"
-        echo -e "${GREEN}Files moved:${NC} $(grep -c 'Moved' "$LOG_FILE")"
-        echo -e "${RED}Errors:${NC} $(wc -l < "$ERROR_LOG")"
     fi
 fi
 
